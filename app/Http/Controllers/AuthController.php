@@ -9,48 +9,40 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    // Mengarahkan pengguna ke halaman login Google
+    // Fungsi untuk melempar user ke halaman login Google
     public function redirectToGoogle()
     {
         return Socialite::driver('google')->redirect();
     }
 
-    // Menangani kembalian (callback) dari Google setelah sukses login
+    // Fungsi untuk menangani balasan dari Google
     public function handleGoogleCallback()
     {
         try {
-            // Ambil data user dari Google
-            $googleUser = Socialite::driver('google')->user();
+            // PERUBAHAN 1: Tambahkan stateless() khusus untuk Vercel
+            $googleUser = Socialite::driver('google')->stateless()->user();
 
-            // Cek apakah user dengan email tersebut sudah ada di database kita
-            $user = User::where('email', $googleUser->getEmail())->first();
-
-            if (!$user) {
-                // Jika user belum ada, daftarkan sebagai user baru
-                $user = User::create([
+            // Cek apakah user sudah ada, jika belum buat baru
+            $user = User::updateOrCreate(
+                ['email' => $googleUser->getEmail()],
+                [
                     'name' => $googleUser->getName(),
-                    'email' => $googleUser->getEmail(),
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
-                    'password' => null, // Dikosongkan karena menggunakan Google Login
-                ]);
-            } else {
-                // Jika user sudah ada, update google_id dan avatar-nya (berjaga-jaga jika ada perubahan)
-                $user->update([
-                    'google_id' => $googleUser->getId(),
-                    'avatar' => $googleUser->getAvatar(),
-                ]);
-            }
+                    'password' => bcrypt('123456dummy') // Password acak karena login via Google
+                ]
+            );
 
-            // Daftarkan session login user ke sistem Laravel (Remember = true)
-            Auth::login($user, true);
+            // Login-kan user ke dalam sistem Laravel
+            Auth::login($user);
 
-            // Arahkan ke halaman dashboard
+            // Arahkan ke Dashboard
             return redirect()->intended('/dashboard');
 
         } catch (\Exception $e) {
-            // Jika terjadi error (misal batal login), kembalikan ke halaman utama
-            return redirect('/')->with('error', 'Gagal login menggunakan Google. Silakan coba lagi.');
+            // PERUBAHAN 2: Menampilkan pesan error ASLI dari sistem (Bukan pesan rahasia lagi)
+            // Ini akan mencetak layar putih dengan tulisan error spesifik agar kita tahu pasti penyebabnya.
+            dd('ERROR GOOGLE LOGIN: ' . $e->getMessage());
         }
     }
 
