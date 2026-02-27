@@ -41,3 +41,14 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/tabulasi/{link}/export', [TabulasiController::class, 'exportCsv'])->name('tabulasi.export');
 });
+
+use Illuminate\Support\Facades\Artisan;
+
+Route::get('/setup-database', function() {
+    try {
+        Artisan::call('migrate', ['--force' => true]);
+        return 'MANTAP! Migrasi Berhasil! Semua tabel sudah dibuat di Aiven. Silakan kembali ke halaman login.';
+    } catch (\Exception $e) {
+        return 'Gagal Migrasi: ' . $e->getMessage();
+    }
+});
