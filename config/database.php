@@ -32,7 +32,7 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? [
-                // PERBAIKAN AIVEN: Paksa koneksi aman (SSL) tapi bypass pengecekan file sertifikat lokal
+                // PERBAIKAN AIVEN: Paksa koneksi aman (SSL) tanpa cek sertifikat lokal
                 PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
             ] : [],
         ],
@@ -67,10 +67,8 @@ return [
 
     ],
 
-    'migrations' => [
-        'table' => 'migrations',
-        'update_date_on_publish' => true,
-    ],
+    // PERBAIKAN: Dikembalikan ke format String standar agar tidak error Array to String
+    'migrations' => 'migrations',
 
     'redis' => [
         'client' => env('REDIS_CLIENT', 'phpredis'),
