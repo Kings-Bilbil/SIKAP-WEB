@@ -18,6 +18,27 @@ export default function Create({ auth }) {
     const addItem = (key, template) => setData({ ...data, [key]: [...data[key], template] });
     const removeItem = (key, index) => { const newData = [...data[key]]; newData.splice(index, 1); setData({ ...data, [key]: newData }); };
 
+    // FUNGSI BARU: Mengatasi bug React State saat menambah/menghapus 2 array sekaligus
+    const addKolom = () => {
+        setData({
+            ...data,
+            nama_kolom: [...data.nama_kolom, ''],
+            tipe_input: [...data.tipe_input, 'text']
+        });
+    };
+
+    const removeKolom = (index) => {
+        const newNamaKolom = [...data.nama_kolom];
+        const newTipeInput = [...data.tipe_input];
+        newNamaKolom.splice(index, 1);
+        newTipeInput.splice(index, 1);
+        setData({
+            ...data,
+            nama_kolom: newNamaKolom,
+            tipe_input: newTipeInput
+        });
+    };
+
     const InputClass = "w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all";
     const LabelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2";
 
@@ -80,12 +101,12 @@ export default function Create({ auth }) {
                                         <select value={data.tipe_input[index]} onChange={e => {const t=[...data.tipe_input]; t[index]=e.target.value; setData({...data, tipe_input:t})}} className={`${InputClass} w-full sm:w-44`}>
                                             <option value="text">Teks / Paragraf</option><option value="number">Hanya Angka</option><option value="checkbox">Status (Centang)</option>
                                         </select>
-                                        {index > 0 && <button type="button" onClick={() => {removeItem('nama_kolom', index); removeItem('tipe_input', index)}} className="px-4 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors font-bold">✕</button>}
+                                        {index > 0 && <button type="button" onClick={() => removeKolom(index)} className="px-4 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors font-bold">✕</button>}
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <button type="button" onClick={() => {addItem('nama_kolom', ''); addItem('tipe_input', 'text')}} className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 py-2">+ Tambah Kolom</button>
+                        <button type="button" onClick={addKolom} className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 py-2">+ Tambah Kolom</button>
                     </div>
 
                     <div className="pt-4 pb-10 flex sm:justify-end">
