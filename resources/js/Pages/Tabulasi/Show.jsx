@@ -3,7 +3,6 @@ import { Head, router } from '@inertiajs/react';
 
 export default function Show({ auth, tabulasi, isAdmin, akses, isGuest, isPending, flash }) {
     
-    // 1. STATE HARUS DIDEKLARASIKAN PALING ATAS
     const [activeMainTab, setActiveMainTab] = useState('rekap');
     const [activeAgendaTab, setActiveAgendaTab] = useState(tabulasi?.agendas?.[0]?.id || '');
     
@@ -16,7 +15,9 @@ export default function Show({ auth, tabulasi, isAdmin, akses, isGuest, isPendin
     const [copied, setCopied] = useState(false);
     const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', action: null, btnStyle: '' });
     
-    // 2. USEEFFECT SEKARANG AMAN KARENA VARIABEL DI ATAS SUDAH ADA
+    // STATE BARU: Untuk mengunci tombol saat sedang loading
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
     useEffect(() => {
         if (!isGuest && !isPending && activeMainTab !== 'form') {
             const interval = setInterval(() => { 
@@ -51,7 +52,25 @@ export default function Show({ auth, tabulasi, isAdmin, akses, isGuest, isPendin
 
     const submitBarang = (e) => {
         e.preventDefault();
-        router.post(`/tabulasi/${tabulasi.link_unik}/item`, { agenda_id: activeAgendaTab, bidang_id: bidangId, isian: dataIsian }, { preserveScroll: true, onSuccess: () => {setDataIsian({}); setActiveMainTab('rekap');} });
+        
+        // Cegah klik berkali-kali
+        if (isSubmitting) return; 
+        
+        // Kunci tombol & mulai loading
+        setIsSubmitting(true);
+        
+        router.post(`/tabulasi/${tabulasi.link_unik}/item`, 
+            { agenda_id: activeAgendaTab, bidang_id: bidangId, isian: dataIsian }, 
+            { 
+                preserveScroll: true, 
+                onSuccess: () => {
+                    setDataIsian({}); 
+                    setActiveMainTab('rekap');
+                },
+                // Buka kunci tombol setelah selesai (baik sukses maupun gagal)
+                onFinish: () => setIsSubmitting(false) 
+            }
+        );
     };
 
     const toggleCheckbox = (itemId, namaKolom) => router.post(`/tabulasi/${tabulasi.link_unik}/item/${itemId}/toggle`, { nama_kolom: namaKolom }, { preserveScroll: true });
@@ -60,11 +79,21 @@ export default function Show({ auth, tabulasi, isAdmin, akses, isGuest, isPendin
         openConfirm('Hapus Barang?', 'Yakin ingin menghapus barang ini secara permanen?', 'bg-red-500 hover:bg-red-600 text-white', () => router.delete(`/tabulasi/${tabulasi.link_unik}/item/${itemId}`, { preserveScroll: true }));
     };
 
-    const submitMintaAkses = (e) => { e.preventDefault(); router.post(`/tabulasi/${tabulasi.link_unik}/minta-akses`, { bidang_id: bidangId }); };
+    const submitMintaAkses = (e) => { 
+        e.preventDefault(); 
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        router.post(`/tabulasi/${tabulasi.link_unik}/minta-akses`, { bidang_id: bidangId }, { onFinish: () => setIsSubmitting(false) }); 
+    };
     
     const submitAksesManual = (e) => { 
         e.preventDefault(); 
-        router.post(`/tabulasi/${tabulasi.link_unik}/akses`, { email_pengisi: emailAkses, peran: peranAkses, bidang_id: peranAkses === 'anggota' ? bidangAksesId : null }, { preserveScroll: true, onSuccess: () => setEmailAkses('') }); 
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        router.post(`/tabulasi/${tabulasi.link_unik}/akses`, 
+            { email_pengisi: emailAkses, peran: peranAkses, bidang_id: peranAkses === 'anggota' ? bidangAksesId : null }, 
+            { preserveScroll: true, onSuccess: () => setEmailAkses(''), onFinish: () => setIsSubmitting(false) }
+        ); 
     };
 
     const updateStatusAkses = (aksesId, action) => {
@@ -95,7 +124,9 @@ export default function Show({ auth, tabulasi, isAdmin, akses, isGuest, isPendin
                                     <option value="" disabled>-- Pilih Bidang --</option>
                                     {tabulasi.bidangs.map(b => <option key={b.id} value={b.id}>{b.nama_bidang}</option>)}
                                 </select>
-                                <button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-xl font-semibold shadow-sm transition-all">Minta Akses Sekarang</button>
+                                <button type="submit" disabled={isSubmitting} className={`w-full py-3.5 rounded-xl font-semibold shadow-sm transition-all ${isSubmitting ? 'bg-slate-400 text-white cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 text-white'}`}>
+                                    {isSubmitting ? 'Mengirim Permintaan...' : 'Minta Akses Sekarang'}
+                                </button>
                             </form>
                         </>
                     ) : (
@@ -301,7 +332,19 @@ export default function Show({ auth, tabulasi, isAdmin, akses, isGuest, isPendin
                                         </div>
                                     );
                                 })}
-                                <div className="pt-4"><button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold shadow-[0_8px_30px_rgb(37,99,235,0.2)] transition-all active:scale-[0.98]">Submit Barang</button></div>
+                                <div className="pt-4">
+                                    <button 
+                                        type="submit" 
+                                        disabled={isSubmitting}
+                                        className={`w-full py-3.5 rounded-xl font-bold transition-all ${
+                                            isSubmitting 
+                                            ? 'bg-slate-400 cursor-not-allowed text-white' 
+                                            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-[0_8px_30px_rgb(37,99,235,0.2)] active:scale-[0.98]'
+                                        }`}
+                                    >
+                                        {isSubmitting ? 'Merekam Data...' : 'Submit Barang'}
+                                    </button>
+                                </div>
                             </form>
                         )}
                     </div>
@@ -354,7 +397,9 @@ export default function Show({ auth, tabulasi, isAdmin, akses, isGuest, isPendin
                                     </select>
                                 )}
 
-                                <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-sm transition-colors text-sm">Undang</button>
+                                <button type="submit" disabled={isSubmitting} className={`px-6 py-3 rounded-xl font-bold shadow-sm transition-colors text-sm ${isSubmitting ? 'bg-slate-400 text-white cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                                    {isSubmitting ? '...' : 'Undang'}
+                                </button>
                             </form>
                             
                             <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Akses Aktif</h3>
